@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: ai-melody-workstation
+    runtime: docker
+    plan: free
+    autoDeploy: true

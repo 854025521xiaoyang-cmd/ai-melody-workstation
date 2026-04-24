@@ -1,0 +1,35 @@
+{
+  "users": [],
+  "orders": [],
+  "purchases": [],
+  "sessions": {},
+  "projects": [
+    {
+      "id": "4eb4db5c-1c3d-40b3-9eb2-dc76a4317081",
+      "ownerId": "local-demo",
+      "title": "\u6d4b\u8bd5\u5de5\u7a0b",
+      "type": "AI \u521b\u4f5c\u5de5\u7a0b",
+      "version": "\u7248\u672c 1",
+      "time": "\u521a\u521a",
+      "summary": "\u63a5\u53e3\u8054\u8c03\u6d4b\u8bd5",
+      "variantCount": 3,
+      "payload": {
+        "compose": {
+          "prompt": "test"
+        },
+        "results": []
+      },
+      "createdAt": "2026-04-23T13:27:52.818941Z",
+      "updatedAt": "2026-04-23T13:27:52.818951Z"
+    }
+  ],
+  "settings": {
+    "local-demo": {
+      "cloudSync": false,
+      "quality": "\u9ad8\u97f3\u8d28",
+      "theme": "\u6df1\u8272\u6a21\u5f0f",
+      "storageUsed": "0.4 GB",
+      "displayName": "\u672c\u5730\u521b\u4f5c\u8005"
+    }
+  }
+}

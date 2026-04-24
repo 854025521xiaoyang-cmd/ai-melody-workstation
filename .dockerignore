@@ -1,0 +1,7 @@
+node_modules
+dist
+.DS_Store
+__pycache__
+backend-python/__pycache__
+backend-python/generated
+test-audio

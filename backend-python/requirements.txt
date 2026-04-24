@@ -1,0 +1,7 @@
+fastapi>=0.110
+uvicorn>=0.29
+librosa>=0.10
+music21>=9.0
+numpy>=1.23
+soundfile>=0.12
+python-multipart>=0.0.9
