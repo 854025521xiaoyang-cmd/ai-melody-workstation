@@ -49,6 +49,52 @@ const instruments = ['钢琴', '吉他', '弦乐', 'Synth', 'Pad', 'Bell', 'Soft
 const quickTags = ['治愈', '副歌感', '深夜', '海边', '下雨', '电影感', 'Lo-fi', '梦幻', '韩剧OST', '游乐园感', '首尔夜晚']
 const keys = ['C major', 'A minor', 'D minor', 'G major']
 const creationModes = ['作词创作', '哼唱创作', '大师创作']
+const workbenchOptions = [
+  { key: 'piano', label: '钢琴工作站' },
+  { key: 'guitar', label: '吉他 Agent' },
+]
+
+const workbenchConfigs = {
+  piano: {
+    eyebrow: 'AI 生成 + AI 辅助创作',
+    title: 'AI 旋律共创 Demo',
+    description: '面向钢琴与旋律写作的工作台，适合从一句灵感快速生成多个旋律版本，再继续续写、改编与保存项目。',
+    promptPlaceholder: '输入一句灵感，例如：做一段深夜下雨、孤独感明显的钢琴旋律',
+    generateLabel: '生成旋律',
+    resultLead: '每个版本都可以真实播放，也支持 AI 续写 / AI 改编 / AI 配和弦 / 换风格',
+    presetCards: [
+      { title: '韩系抒情', description: '更温柔、流畅，适合主歌与情绪铺垫。', patch: { prompt: '做一段韩系抒情、像深夜游乐园灯光一样温柔的钢琴旋律', mood: '韩系抒情', style: 'K-Ballad', instrument: 'Soft EP', keyValue: 'A minor', duration: '16小节', bpm: 74, creationMode: '哼唱创作' } },
+      { title: '电影感钢琴', description: '更有画面感，适合片头、桥段与情绪推进。', patch: { prompt: '做一段有夜色和画面感的电影感钢琴旋律，适合片头推进', mood: '梦幻', style: '电影感', instrument: '钢琴', keyValue: 'D minor', duration: '16小节', bpm: 82, creationMode: '大师创作' } },
+    ],
+  },
+  guitar: {
+    eyebrow: 'AEROBAND GUITAR AGENT',
+    title: '把用户灵感快速转成可演奏的吉他音乐草稿',
+    description: '',
+    promptPlaceholder: '例如：带一点夜色感的流行吉他旋律，适合副歌前推进，有记忆点。',
+    generateLabel: '生成',
+    resultLead: '3 个可试听、可继续编辑、可导出的吉他方向。',
+    presetCards: [
+      { title: 'K-pop', description: '更亮、更抓耳，适合舞台感强的主旋律线条。', patch: { prompt: '做一段带有舞台感和记忆点的 K-pop 吉他主旋律，适合副歌前推进', mood: '梦幻', style: '流行', instrument: '吉他', keyValue: 'A minor', duration: '16小节', bpm: 112, creationMode: '大师创作' } },
+      { title: '美式街头青春', description: '更松弛、更有律动，适合夜色与街头氛围。', patch: { prompt: '做一段带有夜晚城市感、情绪拉扯和记忆点的主旋律吉他草稿', mood: '轻快', style: 'Lo-fi', instrument: '吉他', keyValue: 'A minor', duration: '16小节', bpm: 104, creationMode: '哼唱创作' } },
+    ],
+  },
+}
+
+const styleOptionsByMode = {
+  piano: styles,
+  guitar: ['流行', 'Lo-fi', '电影感', '电子'],
+}
+
+const moodOptionsByMode = {
+  piano: moods,
+  guitar: ['梦幻', '轻快', '浪漫', '神秘', '忧伤'],
+}
+
+const instrumentOptionsByMode = {
+  piano: instruments,
+  guitar: ['吉他', '钢琴', 'Pad', 'Bell', 'Synth'],
+}
 
 const STAFF_WIDTH = 920
 const STAFF_HEIGHT = 260
@@ -64,6 +110,14 @@ const navItems = [
   { key: 'projects', label: '项目管理', icon: FolderOpen },
   { key: 'settings', label: '设置', icon: Settings2 },
 ]
+
+function createDefaultCompose(mode = 'piano') {
+  const preset = workbenchConfigs[mode].presetCards[0].patch
+  return {
+    productMode: mode,
+    ...preset,
+  }
+}
 
 async function apiFetch(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -152,6 +206,15 @@ function downloadJson(filename, payload) {
   anchor.download = filename
   anchor.click()
   URL.revokeObjectURL(url)
+}
+
+function triggerDownload(url, filename) {
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.target = '_blank'
+  anchor.rel = 'noreferrer'
+  anchor.click()
 }
 
 function useTonePlayer() {
@@ -329,7 +392,7 @@ function AppHeader({ authUser, backendHealthy }) {
     <header className="app-header glass-card">
       <div>
         <div className="app-eyebrow">创作 Demo 重构版</div>
-        <div className="app-title">AI 旋律工作站</div>
+        <div className="app-title">AEROBAND GUITAR AGENT</div>
       </div>
       <div className="header-actions">
         <label className="search-bar">
@@ -388,9 +451,9 @@ function HomePage({ onJump, backendHealthy, projectCount }) {
   return (
     <section className="page-stack">
       <div className="section-hero glass-card">
-        <div className="section-hero-title">当前建议的产品结构已经收束成两条主线</div>
+        <div className="section-hero-title">当前应用已经收束成两条创作主线 + 一个吉他 Agent 模式</div>
         <div className="section-hero-sub">
-          一条是「听歌识谱」的真实音频转谱能力，一条是「AI 创作」的参数化生成、续写、改编与项目保存。现在这两条都已经接到了真实后端端口。
+          一条是「听歌识谱」的真实音频转谱能力，一条是「AI 创作」的参数化生成、续写、改编与项目保存。现在又把飞书里的吉他 Agent 也并进同一套创作页里了。
         </div>
       </div>
       <div className="quick-grid">
@@ -549,7 +612,6 @@ function ToolsPage({
   compose,
   setCompose,
   results,
-  setResults,
   activePreview,
   setActivePreview,
   generateLoading,
@@ -559,25 +621,32 @@ function ToolsPage({
   player,
   onGenerate,
   onAction,
+  onExportMidi,
   onSaveProject,
 }) {
+  const modeKey = compose.productMode || 'piano'
+  const workbench = workbenchConfigs[modeKey]
+  const moodOptions = moodOptionsByMode[modeKey]
+  const styleOptions = styleOptionsByMode[modeKey]
+  const instrumentOptions = instrumentOptionsByMode[modeKey]
+  const bpmTone = compose.bpm >= 128 ? '高能推进，更适合主副歌前的抓耳线条。' : compose.bpm >= 100 ? '中高速律动，适合更明确的段落推进。' : '呼吸感更强，适合铺垫和情绪段落。'
   const checks = useMemo(() => [
     { name: '生成接口已连接', pass: backendHealthy },
     { name: '播放器已就绪', pass: true },
-    { name: '结果支持续写/改编/配和弦/换风格', pass: true },
+    { name: '结果支持扩展 / 重混 / 导出 MIDI', pass: true },
   ], [backendHealthy])
 
   return (
     <section className="page-stack">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="hero-grid">
         <div className="hero-card gradient-card">
-          <div className="inline-row dim"><Sparkles size={16} /> AI 生成 + AI 辅助创作</div>
-          <h1>AI 旋律共创 Demo</h1>
-          <p>这页直接参考你找回来的旧 demo 骨架重构，已经改成真实后端请求，不再是纯前端假动作。</p>
+          <div className="inline-row dim"><Sparkles size={16} /> {workbench.eyebrow}</div>
+          <h1>{workbench.title}</h1>
+          {workbench.description ? <p>{workbench.description}</p> : null}
           <div className="chip-row">
             <span className="chip">一句灵感即可生成</span>
             <span className="chip">真实接口返回结果</span>
-            <span className="chip">可试听 + 可保存项目</span>
+            <span className="chip">{modeKey === 'guitar' ? '可导出 MIDI + JSON' : '可试听 + 可保存项目'}</span>
           </div>
         </div>
         <div className="panel">
@@ -586,12 +655,23 @@ function ToolsPage({
             <div className="subtle">优先把每个按钮做成真实请求</div>
           </div>
           <div className="panel-body stack-md">
+            <div className="mode-grid">
+              {workbenchOptions.map((option) => (
+                <button
+                  key={option.key}
+                  onClick={() => setCompose(createDefaultCompose(option.key))}
+                  className={`mode-btn ${modeKey === option.key ? 'mode-active' : ''}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <div className="info-box">
               <div className="row-between"><span>AI 解析灵感</span><span className="muted">{backendHealthy ? '已开启' : '未连接'}</span></div>
               <div className="row-between"><span>旋律真实试听</span><span className="ok">可播放</span></div>
               <div className="row-between"><span>播放引擎</span><span className="muted">采样优先 / 合成兜底</span></div>
             </div>
-            <div className="accent-box">当前版本重点是把「输入灵感 → 生成旋律 → 试听 → 续写/改编/保存工程」完整跑通。</div>
+            {modeKey === 'guitar' ? null : <div className="accent-box">当前版本重点是把「输入灵感 → 生成旋律 → 试听 → 续写/改编/保存工程」完整跑通。</div>}
             <button className="primary-btn full" onClick={player.ensureAudio}><Volume2 size={16} /> {player.audioUnlocked ? '音频已就绪' : '先启用音频'}</button>
             <div className="status-box">当前音色状态：<span className="ok">{player.sampleStatus}</span></div>
             <div className="status-box">
@@ -610,9 +690,25 @@ function ToolsPage({
         <div className="panel">
           <div className="panel-header">
             <div className="inline-row"><Wand2 size={18} /> 灵感输入</div>
-            <div className="subtle">用户给意图，系统通过真实端口生成旋律结果</div>
+            <div className="subtle">{modeKey === 'guitar' ? '用户给意图，系统通过真实端口生成 3 个吉他方案' : '用户给意图，系统通过真实端口生成旋律结果'}</div>
           </div>
           <div className="panel-body stack-lg">
+            <div className="info-box">
+              <div className="subtle title-space">快捷方向</div>
+              <div className="preset-grid">
+                {workbench.presetCards.map((card) => (
+                  <button
+                    key={card.title}
+                    className="preset-card"
+                    onClick={() => setCompose((prev) => ({ ...prev, productMode: modeKey, ...card.patch }))}
+                  >
+                    <div className="preset-title">{card.title}</div>
+                    <div className="tiny muted top-gap-xs">{card.description}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="info-box">
               <div className="subtle title-space">创作模式</div>
               <div className="mode-grid">
@@ -624,7 +720,7 @@ function ToolsPage({
             </div>
 
             <div>
-              <input value={compose.prompt} onChange={(e) => setCompose((prev) => ({ ...prev, prompt: e.target.value }))} className="text-input" placeholder="输入一句灵感，例如：做一段深夜下雨、孤独感明显的钢琴旋律" />
+              <input value={compose.prompt} onChange={(e) => setCompose((prev) => ({ ...prev, prompt: e.target.value }))} className="text-input" placeholder={workbench.promptPlaceholder} />
               <div className="chip-row top-gap">
                 {quickTags.map((tag) => (
                   <button key={tag} className="tag-btn" onClick={() => setCompose((prev) => ({ ...prev, prompt: prev.prompt.includes(tag) ? prev.prompt : `${prev.prompt}，${tag}` }))}>{tag}</button>
@@ -633,34 +729,35 @@ function ToolsPage({
             </div>
 
             <div className="form-grid">
-              <label className="field"><span>情绪</span><select value={compose.mood} onChange={(e) => setCompose((prev) => ({ ...prev, mood: e.target.value }))}>{moods.map((item) => <option key={item}>{item}</option>)}</select></label>
-              <label className="field"><span>风格</span><select value={compose.style} onChange={(e) => setCompose((prev) => ({ ...prev, style: e.target.value }))}>{styles.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label className="field"><span>情绪</span><select value={compose.mood} onChange={(e) => setCompose((prev) => ({ ...prev, mood: e.target.value }))}>{moodOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label className="field"><span>风格</span><select value={compose.style} onChange={(e) => setCompose((prev) => ({ ...prev, style: e.target.value }))}>{styleOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
               <label className="field"><span>调性</span><select value={compose.keyValue} onChange={(e) => setCompose((prev) => ({ ...prev, keyValue: e.target.value }))}>{keys.map((item) => <option key={item}>{item}</option>)}</select></label>
-              <label className="field"><span>乐器</span><select value={compose.instrument} onChange={(e) => setCompose((prev) => ({ ...prev, instrument: e.target.value }))}>{instruments.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label className="field"><span>乐器</span><select value={compose.instrument} onChange={(e) => setCompose((prev) => ({ ...prev, instrument: e.target.value }))}>{instrumentOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
             </div>
 
             <div className="form-grid">
               <label className="field">
                 <span>BPM <strong>{compose.bpm}</strong></span>
                 <input type="range" min="60" max="160" step="1" value={compose.bpm} onChange={(e) => setCompose((prev) => ({ ...prev, bpm: Number(e.target.value) }))} />
+                <div className="tiny muted">{bpmTone}</div>
               </label>
-              <label className="field"><span>时长</span><select value={compose.duration} onChange={(e) => setCompose((prev) => ({ ...prev, duration: e.target.value }))}><option>8小节</option><option>16小节</option></select></label>
+              <label className="field"><span>时长</span><select value={compose.duration} onChange={(e) => setCompose((prev) => ({ ...prev, duration: e.target.value }))}><option>4小节</option><option>8小节</option></select></label>
             </div>
 
             <div className="button-row">
               <button className="primary-btn flex-1" onClick={onGenerate} disabled={generateLoading}>
                 {generateLoading ? <RefreshCw size={16} className="spin" /> : <Sparkles size={16} />}
-                {generateLoading ? '正在生成...' : '生成旋律'}
+                {generateLoading ? '正在生成...' : workbench.generateLabel}
               </button>
-              <button className="secondary-btn" onClick={() => setCompose({ prompt: '做一段韩系抒情、像深夜游乐园灯光一样温柔的钢琴旋律', mood: '韩系抒情', style: 'K-Ballad', instrument: 'Soft EP', keyValue: 'A minor', duration: '16小节', bpm: 74, creationMode: '哼唱创作' })}>
-                <SlidersHorizontal size={16} /> 韩系原创预设
+              <button className="secondary-btn" onClick={() => setCompose(createDefaultCompose(modeKey))}>
+                <SlidersHorizontal size={16} /> 恢复当前模式预设
               </button>
             </div>
 
-            <div className="status-box">
+              <div className="status-box">
               <div className="row-between"><span>生成进度</span><span>{progress}%</span></div>
               <div className="progress"><div className="progress-inner" style={{ width: `${progress}%` }} /></div>
-              <div className="tiny top-gap">{generateLoading ? '正在解析灵感、推断风格并生成旋律…' : '点击后将生成 3 个可真实试听的旋律版本。'}</div>
+              <div className="tiny top-gap">{generateLoading ? '正在解析灵感、推断风格并生成旋律…' : modeKey === 'guitar' ? '点击后将生成 3 个可真实试听、可导出 MIDI 的结果。' : '点击后将生成 3 个可真实试听的旋律版本。'}</div>
             </div>
 
             {generateError ? <div className="error-box">{generateError}</div> : null}
@@ -672,7 +769,7 @@ function ToolsPage({
             <div className="panel-header row-between header-gap">
               <div>
                 <div className="inline-row"><Music4 size={18} /> 生成结果</div>
-                <div className="subtle top-gap-xs">每个版本都可以真实播放，也支持 AI 续写 / AI 改编 / AI 配和弦 / 换风格</div>
+                <div className="subtle top-gap-xs">{workbench.resultLead}</div>
               </div>
               <div className="segmented">
                 <button className={`icon-btn ${activePreview === 'wave' ? 'active' : ''}`} onClick={() => setActivePreview('wave')}>Wave</button>
@@ -725,10 +822,12 @@ function ToolsPage({
                         </div>
 
                         <div className="button-wrap top-gap">
-                          <button className="secondary-btn" onClick={() => onAction('continue', item)} disabled={Boolean(actionLoadingId)}><Wand2 size={16} /> {actionLoadingId === `${item.id}-continue` ? 'AI 续写中...' : 'AI 续写'}</button>
-                          <button className="secondary-btn" onClick={() => onAction('rearrange', item)} disabled={Boolean(actionLoadingId)}><RefreshCw size={16} className={actionLoadingId === `${item.id}-rearrange` ? 'spin' : ''} /> {actionLoadingId === `${item.id}-rearrange` ? 'AI 改编中...' : 'AI 改编'}</button>
+                          <button className="secondary-btn" onClick={() => onAction('continue', item)} disabled={Boolean(actionLoadingId)}><Wand2 size={16} /> {actionLoadingId === `${item.id}-continue` ? '处理中...' : modeKey === 'guitar' ? '继续生成' : 'AI 续写'}</button>
+                          <button className="secondary-btn" onClick={() => onAction('expand', item)} disabled={Boolean(actionLoadingId)}><RefreshCw size={16} className={actionLoadingId === `${item.id}-expand` ? 'spin' : ''} /> {actionLoadingId === `${item.id}-expand` ? '扩展中...' : '扩展'}</button>
+                          <button className="secondary-btn" onClick={() => onAction('remix', item)} disabled={Boolean(actionLoadingId)}><AudioLines size={16} /> {actionLoadingId === `${item.id}-remix` ? '重混中...' : modeKey === 'guitar' ? '重混' : 'AI 改编'}</button>
                           <button className="secondary-btn" onClick={() => onAction('chords', item)} disabled={Boolean(actionLoadingId)}><Piano size={16} /> {actionLoadingId === `${item.id}-chords` ? '配和弦中...' : 'AI 配和弦'}</button>
-                          <button className="secondary-btn" onClick={() => onAction('restyle', item)} disabled={Boolean(actionLoadingId)}><AudioLines size={16} /> {actionLoadingId === `${item.id}-restyle` ? '换风格中...' : '换风格'}</button>
+                          <button className="secondary-btn" onClick={() => onAction('restyle', item)} disabled={Boolean(actionLoadingId)}><RefreshCw size={16} className={actionLoadingId === `${item.id}-restyle` ? 'spin' : ''} /> {actionLoadingId === `${item.id}-restyle` ? '换风格中...' : '换风格'}</button>
+                          <button className="secondary-btn" onClick={() => onExportMidi(item)} disabled={Boolean(actionLoadingId)}><Download size={16} /> 导出 MIDI</button>
                           <button className="secondary-btn" onClick={() => downloadJson(`${item.title}.json`, item)}><Download size={16} /> 导出结构</button>
                         </div>
                       </motion.div>
@@ -751,7 +850,7 @@ function ToolsPage({
               {[
                 '哼唱创作：先出旋律，再补歌词，再补伴奏。',
                 '作词创作：先出歌词，再补旋律，再补伴奏。',
-                '大师创作：先出完整草稿，再做局部编辑，最后保存项目。',
+                modeKey === 'guitar' ? '吉他 Agent：先出 3 个可演奏方案，再继续生成、扩展、重混与导出。' : '大师创作：先出完整草稿，再做局部编辑，最后保存项目。',
               ].map((tip) => (
                 <div key={tip} className="suggestion-card glass-card">
                   <div className="panel-title">工作流建议</div>
@@ -897,16 +996,7 @@ export default function App() {
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const [dragActive, setDragActive] = useState(false)
-  const [compose, setCompose] = useState({
-    prompt: '做一段韩系抒情、像深夜游乐园灯光一样温柔的钢琴旋律',
-    mood: '韩系抒情',
-    style: 'K-Ballad',
-    instrument: 'Soft EP',
-    keyValue: 'A minor',
-    duration: '16小节',
-    bpm: 74,
-    creationMode: '哼唱创作',
-  })
+  const [compose, setCompose] = useState(createDefaultCompose('piano'))
   const [results, setResults] = useState([])
   const [activePreview, setActivePreview] = useState('wave')
   const [generateLoading, setGenerateLoading] = useState(false)
@@ -1060,6 +1150,7 @@ export default function App() {
       const data = await apiFetch('/api/compose/generate', {
         method: 'POST',
         body: JSON.stringify({
+          productMode: compose.productMode,
           prompt: compose.prompt,
           mood: compose.mood,
           style: compose.style,
@@ -1089,6 +1180,8 @@ export default function App() {
     const pathMap = {
       continue: '/api/compose/continue',
       rearrange: '/api/compose/rearrange',
+      expand: '/api/compose/expand',
+      remix: '/api/compose/remix',
       chords: '/api/compose/chords',
       restyle: '/api/compose/restyle',
     }
@@ -1098,7 +1191,7 @@ export default function App() {
         method: 'POST',
         body: JSON.stringify({
           variant,
-          nextStyle: styles[(styles.indexOf(variant.style) + 1) % styles.length],
+          nextStyle: styleOptionsByMode[variant.productMode || compose.productMode || 'piano'][(styleOptionsByMode[variant.productMode || compose.productMode || 'piano'].indexOf(variant.style) + 1) % styleOptionsByMode[variant.productMode || compose.productMode || 'piano'].length],
         }),
       })
       replaceVariant(variant.id, data.variant)
@@ -1121,10 +1214,10 @@ export default function App() {
         method: 'POST',
         body: JSON.stringify({
           title: compose.prompt.slice(0, 18) || '未命名工程',
-          type: 'AI 创作工程',
+          type: compose.productMode === 'guitar' ? '吉他创作工程' : 'AI 创作工程',
           version: '版本 1',
           time: '刚刚',
-          summary: `${compose.style} · ${compose.mood} · ${results.length} 个版本`,
+          summary: `${compose.productMode === 'guitar' ? '吉他 Agent' : '钢琴工作站'} · ${compose.style} · ${compose.mood} · ${results.length} 个版本`,
           variantCount: results.length,
           payload: { compose, results },
         }),
@@ -1160,6 +1253,14 @@ export default function App() {
 
   const handleDownloadProject = (project) => {
     downloadJson(`${project.title}.json`, project)
+  }
+
+  const handleExportMidi = async (variant) => {
+    const data = await apiFetch('/api/compose/export-midi', {
+      method: 'POST',
+      body: JSON.stringify({ variant }),
+    })
+    triggerDownload(`${API_BASE}${data.midiUrl}`, `${variant.title}.mid`)
   }
 
   const handleShareProject = async (project) => {
@@ -1250,7 +1351,6 @@ export default function App() {
             compose={compose}
             setCompose={setCompose}
             results={results}
-            setResults={setResults}
             activePreview={activePreview}
             setActivePreview={setActivePreview}
             generateLoading={generateLoading}
@@ -1260,6 +1360,7 @@ export default function App() {
             player={player}
             onGenerate={handleGenerate}
             onAction={handleVariantAction}
+            onExportMidi={handleExportMidi}
             onSaveProject={handleSaveProject}
           />
         )

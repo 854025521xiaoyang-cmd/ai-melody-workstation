@@ -28,6 +28,8 @@ sys.path.append(str(PROJECT_ROOT))
 from piano_to_sheet import extract_f0, events_to_score, f0_to_events  # noqa: E402
 
 import librosa  # noqa: E402
+from music21 import chord as m21chord  # noqa: E402
+from music21 import meter, note as m21note, stream, tempo  # noqa: E402
 
 app = FastAPI()
 GENERATED_DIR.mkdir(exist_ok=True)
@@ -238,8 +240,21 @@ def build_variants(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
     instrument = payload.get("instrument", "Soft EP")
     key = payload.get("key", "A minor")
     duration = payload.get("duration", "16小节")
+    product_mode = payload.get("productMode", "piano")
+    bars = 4 if duration == "4小节" else 8 if duration == "8小节" else 16
 
-    if style == "K-Ballad" or mood == "韩系抒情":
+    if product_mode == "guitar":
+        ideas = [
+            ("舞台感旋律 I", "方案 I", "梦幻感更强，起势更快，适合做主打 Hook。"),
+            ("舞台感旋律 II", "方案 II", "副歌感更强，适合做更有推进感的段落。"),
+            ("舞台感旋律 III", "方案 III", "记忆点更集中，适合继续扩展成完整段落。"),
+        ]
+        hints = [
+            "AI 建议：适合做主旋律吉他线，可继续生成更多走向。",
+            "AI 建议：扩展时可保留前两小节动机，副歌会更稳。",
+            "AI 建议：重混时加入更明显的切分和停顿会更抓耳。",
+        ]
+    elif style == "K-Ballad" or mood == "韩系抒情":
         ideas = [
             ("Seoul Night Playground", "韩系抒情主歌感", "更像韩剧 OST 的温柔主歌，钢琴起手很舒服。"),
             ("Soft Carousel Heart", "更适合副歌", "旋律更抓耳，带一点甜和失落交织的感觉。"),
@@ -271,7 +286,7 @@ def build_variants(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "title": title,
                 "tag": tag,
                 "desc": desc,
-                "bars": 16 if duration == "16小节" else 8,
+                "bars": bars,
                 "bpm": next_bpm,
                 "style": style,
                 "mood": mood,
@@ -281,6 +296,7 @@ def build_variants(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "aiHint": hints[idx],
                 "melody": generate_sequence(prompt, mood, style, next_bpm, instrument, key, idx),
                 "sourceMode": "生成",
+                "productMode": product_mode,
             }
         )
     return variants
@@ -316,6 +332,33 @@ def continue_variant(variant: Dict[str, Any]) -> Dict[str, Any]:
         "aiHint": "AI 已完成续写：后半段做了情绪承接，可继续做副歌或桥段。",
         "melody": {"sequences": [*base_notes, *appended], "chords": [*base_chords, *next_chords]},
         "sourceMode": "续写",
+    }
+
+
+def expand_variant(variant: Dict[str, Any]) -> Dict[str, Any]:
+    extra = continue_variant(variant)
+    melody = extra["melody"]["sequences"]
+    widened = []
+    for index, item in enumerate(melody):
+        bumped = item["midi"] + 12 if index % 5 == 0 and item["midi"] <= 72 else item["midi"]
+        widened.append(
+            {
+                **item,
+                "midi": bumped,
+                "note": librosa.midi_to_note(bumped),
+                "velocity": min(0.95, round((item.get("velocity") or 0.7) + 0.06, 2)),
+            }
+        )
+    return {
+        **extra,
+        "id": str(uuid.uuid4()),
+        "title": f"{variant['title']} · 扩展版",
+        "tag": "已扩展",
+        "desc": f"{variant['desc']} AI 已把段落扩展得更完整，适合继续往演奏稿推进。",
+        "confidence": min(99, int(variant["confidence"]) + 4),
+        "aiHint": "AI 已扩展：保留主干动机，同时补了高八度强调点和更完整的后半段。",
+        "melody": {"sequences": widened, "chords": extra["melody"]["chords"]},
+        "sourceMode": "扩展",
     }
 
 
@@ -398,6 +441,43 @@ def restyle_variant(variant: Dict[str, Any], next_style: str) -> Dict[str, Any]:
         ),
         "sourceMode": "换风格",
     }
+
+
+def remix_variant(variant: Dict[str, Any]) -> Dict[str, Any]:
+    remixed = rearrange_variant(variant)
+    remixed["title"] = f"{variant['title']} · 重混版"
+    remixed["tag"] = "已重混"
+    remixed["desc"] = f"{variant['desc']} AI 已重混节奏与音色组织，整体更偏舞台或现场演奏感。"
+    remixed["aiHint"] = "AI 已重混：保留核心记忆点，同时重新切分了节奏密度和起伏。"
+    remixed["sourceMode"] = "重混"
+    return remixed
+
+
+def export_variant_midi(variant: Dict[str, Any]) -> str:
+    score = stream.Score()
+    part = stream.Part()
+    part.append(tempo.MetronomeMark(number=int(variant.get("bpm") or 100)))
+    part.append(meter.TimeSignature("4/4"))
+
+    for item in variant.get("melody", {}).get("sequences", []):
+        note_obj = m21note.Note(item.get("note") or item.get("name") or "C4")
+        note_obj.quarterLength = item.get("durationBeats") or parse_duration_beats(item.get("duration") or "4n")
+        part.append(note_obj)
+
+    chord_part = stream.Part()
+    chord_part.append(tempo.MetronomeMark(number=int(variant.get("bpm") or 100)))
+    chord_part.append(meter.TimeSignature("4/4"))
+    for item in variant.get("melody", {}).get("chords", []):
+        chord_obj = m21chord.Chord(item.get("chord") or ["C3", "E3", "G3"])
+        chord_obj.quarterLength = 2.0 if item.get("duration") == "2n" else 4.0
+        chord_part.append(chord_obj)
+
+    score.insert(0, part)
+    score.insert(0, chord_part)
+    filename = f"{uuid.uuid4()}.mid"
+    output_path = GENERATED_DIR / filename
+    score.write("midi", fp=output_path)
+    return f"/generated/{filename}"
 
 
 @app.get("/")
@@ -645,6 +725,24 @@ async def compose_rearrange(request: Request):
     return {"ok": True, "variant": rearrange_variant(variant)}
 
 
+@app.post("/api/compose/expand")
+async def compose_expand(request: Request):
+    payload = await request.json()
+    variant = payload.get("variant")
+    if not variant:
+        raise HTTPException(status_code=400, detail="Missing variant")
+    return {"ok": True, "variant": expand_variant(variant)}
+
+
+@app.post("/api/compose/remix")
+async def compose_remix(request: Request):
+    payload = await request.json()
+    variant = payload.get("variant")
+    if not variant:
+        raise HTTPException(status_code=400, detail="Missing variant")
+    return {"ok": True, "variant": remix_variant(variant)}
+
+
 @app.post("/api/compose/chords")
 async def compose_chords(request: Request):
     payload = await request.json()
@@ -662,6 +760,16 @@ async def compose_restyle(request: Request):
     if not variant:
         raise HTTPException(status_code=400, detail="Missing variant")
     return {"ok": True, "variant": restyle_variant(variant, next_style)}
+
+
+@app.post("/api/compose/export-midi")
+async def compose_export_midi(request: Request):
+    payload = await request.json()
+    variant = payload.get("variant")
+    if not variant:
+        raise HTTPException(status_code=400, detail="Missing variant")
+    midi_url = export_variant_midi(variant)
+    return {"ok": True, "midiUrl": midi_url}
 
 
 @app.get("/api/projects")
